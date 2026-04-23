@@ -509,10 +509,18 @@ def main():
     print(f"[wiki] node={wiki_token} -> document_id={document_id}")
 
     if args.clear:
-        children = cli.list_children(document_id, document_id)
-        if children:
-            print(f"[clear] 删除原有 {len(children)} 个一级块")
-            cli.delete_children(document_id, document_id, 0, len(children))
+        # 飞书 batch_delete 每次最多删 50 个，必须循环直到全部清空
+        total_deleted = 0
+        while True:
+            children = cli.list_children(document_id, document_id)
+            if not children:
+                break
+            batch = min(50, len(children))
+            cli.delete_children(document_id, document_id, 0, batch)
+            total_deleted += batch
+            time.sleep(0.3)
+        if total_deleted:
+            print(f"[clear] 已清空全部 {total_deleted} 个一级块")
 
     print(f"[write] 追加 {len(units)} 个单元 ...")
     buf: list[dict] = []
