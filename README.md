@@ -723,6 +723,7 @@ python feishu/feishu_writer.py ai_context/2026-04-23.md
 | `403 forBidden` | 该飞书页面没有单独给应用授权 | 打开**该页面**分享 → 搜应用名 → 可编辑 |
 | Actions `exit code 1` | Secrets 未配置或配置错误 | 检查仓库 Secrets 是否齐全 |
 | `ConnectionResetError 10054` | 飞书服务端关闭了空闲连接 | 已内置重试逻辑，最多重试 4 次自动恢复 |
+| 钩子把文件推到了错误的飞书页 | 用 `$env:FEISHU_WIKI_TOKEN=xxx` 临时测试后直接 commit | 临时 env 会被钩子继承并覆盖 `.env`；测试完毕后立即在 `.env` 写回正确 token，再提交 |
 | 表格显示为纯文本 | 旧版 feishu_writer.py | 更新到最新版（`git pull` 本工具仓库） |
 | 速度很慢 | 飞书 5 QPS 限制 + sleep 0.2s | 正常，500 块约需 100 秒 |
 | 钩子没有触发 | Windows 下钩子文件名问题 | 确认 `.git/hooks/post-commit` **没有**文件扩展名 |
