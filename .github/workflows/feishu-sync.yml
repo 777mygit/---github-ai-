@@ -1,0 +1,55 @@
+name: Sync Markdown to Feishu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "book/chapters/**.md"   # 只有章节 md 改动才触发
+      - "feishu/feishu_writer.py"
+
+jobs:
+  sync:
+    name: Push changed chapters to Feishu
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2          # 需要 HEAD~1 做 diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Detect changed chapters & push to Feishu
+        env:
+          FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
+        run: |
+          CHANGED=$(git diff HEAD~1 --name-only | grep "^book/chapters/.*\.md$" || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No chapter files changed, skipping."
+            exit 0
+          fi
+          echo "Changed chapters:"
+          echo "$CHANGED"
+          for f in $CHANGED; do
+            echo "Pushing $f ..."
+            python feishu/feishu_writer.py "$f"
+          done
+
+      - name: Generate AI commit summary & push to Feishu
+        env:
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
+        run: |
+          git diff HEAD~1 | python feishu/ai_summarize.py
+        continue-on-error: true   # AI 摘要失败不阻断主流程
