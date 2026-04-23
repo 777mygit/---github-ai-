@@ -705,7 +705,7 @@ def main():
 
 ```
 App ID:     cli_a9636f488a789cd4
-App Secret: W5hGOiHA7Lch9laV1RnV1mGROmSm2hDH   ← 保密，只写在 .env 里
+App Secret: W5hGOiHA7Lch9l...   ← 保密，只写在 .env 里
 ```
 
 ### 步骤 2：申请权限并发布
@@ -734,7 +734,7 @@ copy .env.example .env
 
 ```
 FEISHU_APP_ID=cli_a9636f488a789cd4
-FEISHU_APP_SECRET=W5hGOiHA7Lch9laV1RnV1mGROmSm2hDH
+FEISHU_APP_SECRET=W5hGOiHA7Lch...
 FEISHU_WIKI_TOKEN=MLwKwZkgPiqgALkWVTEcI0Gjnmf
 FEISHU_OPEN_DOMAIN=https://open.feishu.cn
 ```
