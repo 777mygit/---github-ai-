@@ -48,34 +48,45 @@ def get_space_id(token: str, wiki_node_token: str) -> tuple[str, str]:
     return node["space_id"], node["node_token"]
 
 
-def create_wiki_page(token: str, space_id: str, parent_node_token: str, title: str) -> str:
-    """在父节点下创建新子页面，返回新页面的 node_token（即新 wiki_token）"""
+def create_wiki_page(token: str, space_id: str, title: str, parent_node_token: str = "") -> str:
+    """
+    在 Wiki 空间里创建新页面。
+    parent_node_token 为空 → 根目录（与其他 wiki 页面平级）
+    parent_node_token 非空 → 指定页面的子页面
+    """
+    body: dict = {
+        "obj_type": "docx",
+        "node_type": "origin",
+        "title": title,
+    }
+    if parent_node_token:
+        body["parent_node_token"] = parent_node_token
+
     r = requests.post(
         f"{DOMAIN}/open-apis/wiki/v2/spaces/{space_id}/nodes",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={
-            "obj_type": "docx",
-            "parent_node_token": parent_node_token,
-            "node_type": "origin",
-            "title": title,
-        },
+        json=body,
         timeout=15,
     )
     data = r.json()
     if data.get("code", 0) != 0:
         raise RuntimeError(f"创建页面失败: {data}")
     new_token = data["data"]["node"]["node_token"]
-    print(f"[create] 新子页面已创建，wiki_token={new_token}")
+    loc = f"子页面（parent={parent_node_token}）" if parent_node_token else "根目录页面"
+    print(f"[create] 新{loc}已创建，wiki_token={new_token}")
     return new_token
 
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python create_wiki_page.py <file.md> [页面标题]")
+        print("用法:")
+        print("  python create_wiki_page.py <file.md> [页面标题]          # 根目录新页面")
+        print("  python create_wiki_page.py <file.md> [标题] --child      # 作为当前WIKI_TOKEN的子页面")
         sys.exit(1)
 
-    md_file = Path(sys.argv[1])
-    title   = sys.argv[2] if len(sys.argv) > 2 else md_file.stem
+    md_file   = Path(sys.argv[1])
+    title     = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else md_file.stem
+    as_child  = "--child" in sys.argv
 
     if not md_file.exists():
         print(f"文件不存在: {md_file}")
@@ -84,12 +95,14 @@ def main():
     print(f"[init] 获取 tenant_access_token ...")
     token = get_tenant_token()
 
-    print(f"[init] 获取 space_id 和父节点 token ...")
-    space_id, parent_node_token = get_space_id(token, PARENT_TOKEN)
-    print(f"[init] space_id={space_id}, parent_node_token={parent_node_token}")
+    print(f"[init] 获取 space_id ...")
+    space_id, current_node_token = get_space_id(token, PARENT_TOKEN)
+    parent_node_token = current_node_token if as_child else ""
+    mode = f"子页面（挂在 {PARENT_TOKEN} 下）" if as_child else "根目录独立页面"
+    print(f"[init] space_id={space_id}，创建模式={mode}")
 
-    print(f"[init] 创建新子页面：{title}")
-    new_wiki_token = create_wiki_page(token, space_id, parent_node_token, title)
+    print(f"[init] 创建新页面：{title}")
+    new_wiki_token = create_wiki_page(token, space_id, title, parent_node_token)
 
     # 等一下让飞书后台初始化完
     time.sleep(2)

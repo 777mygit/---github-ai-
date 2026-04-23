@@ -1,24 +1,33 @@
-name: Sync Markdown to Feishu
+name: Sync to Feishu
 
 on:
   push:
     branches: [main]
     paths:
-      - "book/chapters/**.md"   # 只有章节 md 改动才触发
+      - "book/chapters/**.md"
+      - "README.md"
       - "feishu/feishu_writer.py"
+
+  # 也可手动触发（用于全量重建）
+  workflow_dispatch:
+    inputs:
+      clear:
+        description: "是否清空飞书文档后重写（全量重建填 true）"
+        required: false
+        default: "false"
 
 jobs:
   sync:
-    name: Push changed chapters to Feishu
+    name: Push changed files to Feishu
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (with history for diff)
+      - name: Checkout (带历史，用于 diff)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2          # 需要 HEAD~1 做 diff
+          fetch-depth: 2
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -26,30 +35,45 @@ jobs:
       - name: Install dependencies
         run: pip install requests python-dotenv
 
-      - name: Detect changed chapters & push to Feishu
+      # ── 手动触发全量重建 ──────────────────────────────────────
+      - name: 全量重建飞书文档（仅 workflow_dispatch + clear=true 时）
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.clear == 'true'
         env:
           FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
         run: |
-          CHANGED=$(git diff HEAD~1 --name-only | grep "^book/chapters/.*\.md$" || true)
+          cat book/chapters/*.md > /tmp/all.md
+          python feishu/feishu_writer.py /tmp/all.md --clear
+          echo "✅ 全量重建完成"
+
+      # ── 增量推送（push 触发）────────────────────────────────
+      - name: 检测改动章节并推送飞书
+        if: github.event_name == 'push'
+        env:
+          FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
+        run: |
+          CHANGED=$(git diff HEAD~1 --name-only | grep -E "^(book/chapters/|README).*\.md$" || true)
           if [ -z "$CHANGED" ]; then
-            echo "No chapter files changed, skipping."
+            echo "本次 push 无 .md 变更，跳过"
             exit 0
           fi
-          echo "Changed chapters:"
+          echo "改动文件："
           echo "$CHANGED"
           for f in $CHANGED; do
-            echo "Pushing $f ..."
+            echo "→ 推送 $f ..."
             python feishu/feishu_writer.py "$f"
           done
 
-      - name: Generate AI commit summary & push to Feishu
+      # ── AI 摘要（可选，需配 OPENAI_API_KEY）────────────────
+      - name: AI 变更摘要推送飞书
+        if: github.event_name == 'push'
         env:
           OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
           FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
         run: |
-          git diff HEAD~1 | python feishu/ai_summarize.py
-        continue-on-error: true   # AI 摘要失败不阻断主流程
+          git diff HEAD~1 | python feishu/ai_summarize.py || echo "AI 摘要失败（不影响主流程）"
