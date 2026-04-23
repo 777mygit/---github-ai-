@@ -759,6 +759,7 @@ python feishu/feishu_writer.py ai_context/2026-04-23.md
 
 | 版本 | 日期 | 变更内容 |
 | --- | --- | --- |
+| v1.5 | 2026-04-23 | 修复 `$env:FEISHU_WIKI_TOKEN` 临时环境变量被 git 钩子子进程继承、覆盖 `.env` 的问题；`.env` 改为指向当前仓库正确页面，`.env.example` 加入警告说明，README 常见问题补充该场景 |
 | v1.4 | 2026-04-23 | `feishu_writer --clear` 改为循环分批删除（每次 50 个），解决飞书 `batch_delete` 单次上限导致大文档清空不彻底、内容重复的问题 |
 | v1.3 | 2026-04-23 | `feishu_writer._call()` 加指数退避重试（最多 4 次），解决大文档推送时网络抖动中断问题 |
 | v1.3 | 2026-04-23 | Actions 和 post-commit 钩子新增监控 `daily_log/` `weekly/` `notes/` `ai_context/` 目录 |
@@ -780,6 +781,7 @@ python feishu/feishu_writer.py ai_context/2026-04-23.md
 - [x] 网络抖动自动重试（指数退避，最多 4 次）
 - [x] 个人三大场景（日志/踩坑/AI上下文）目录监控
 - [x] `--clear` 分批删除，彻底清空不留残块
+- [x] 修复临时环境变量被钩子继承导致推错飞书页的问题
 - [ ] 每章/每文件独立 Wiki 子页面（实现文件级覆盖）
 - [ ] GitHub Issue ↔ 飞书 Bitable 双向同步
 - [ ] 每日站会摘要定时发送到飞书群
