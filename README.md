@@ -87,6 +87,14 @@ your-next-project     ──►  飞书「你的下一个项目」页面
 ├── .git/
 │   └── hooks/
 │       └── post-commit       # 本地钩子：commit 后自动推飞书（可选备用）
+├── daily_log/                # 每日开发日志（自动同步飞书）
+│   └── YYYY-MM-DD.md
+├── weekly/                   # 每周总结（自动同步飞书）
+│   └── YYYY-WXX.md
+├── notes/                    # 踩坑笔记 / 知识沉淀（自动同步飞书）
+│   └── YYYY-MM-DD_问题标题.md
+├── ai_context/               # AI 对话上下文记录（自动同步飞书）
+│   └── YYYY-MM-DD.md
 └── README.md
 ```
 
@@ -350,6 +358,306 @@ git commit -m "weekly: 第17周工作总结"
 GitHub 仓库 → Actions → Sync to Feishu → Run workflow
 → 输入 clear=true → Run
 ```
+
+---
+
+## 四个场景详细示例
+
+> 以下每个场景都给出了**真实文件内容**、**Git 操作命令**和**飞书里会出现什么**。
+> 直接复制粘贴即可上手，无需额外配置。
+
+---
+
+### 场景一：团队项目管理（Git + 飞书联动）
+
+**目标**：每次代码变更，飞书里自动出现「改了什么 / 为什么 / 优先级」。
+
+**文件示例** `book/chapters/bugfix-2026-04-23.md`：
+
+```markdown
+## 修复：OV5640 摄像头初始化失败
+
+### 问题描述
+板子上电后 `/dev/video0` 不出现，dmesg 显示 I2C NAK。
+
+### 根本原因
+RESET 引脚默认高，需要先拉低 50ms 再释放，等待内部寄存器稳定。
+原驱动缺少这段时序。
+
+### 修复方法
+在 `ov5640_probe()` 里增加：
+```c
+gpiod_set_value(priv->reset_gpio, 0);
+msleep(50);
+gpiod_set_value(priv->reset_gpio, 1);
+msleep(10);
+```
+
+### 验证方法
+`v4l2-ctl --device=/dev/video0 --stream-mmap --stream-count=10`
+连续采 10 帧无报错即通过。
+```
+
+**提交命令**：
+
+```powershell
+git add book/chapters/bugfix-2026-04-23.md
+git commit -m "fix: OV5640 摄像头 I2C NAK，增加 RESET 时序"
+git push
+```
+
+**飞书里会出现**：
+- 该 .md 文件内容自动追加到飞书文档
+- AI 摘要块：「**修复** OV5640 摄像头 I2C NAK 问题，根因是 RESET 引脚时序缺失，P1 优先级」
+
+---
+
+### 场景二：个人开发日志 / 周报自动生成
+
+**目标**：平时写日志提交，周五把当周日志汇总一下，周报就完成了。不需要专门抽时间写周报。
+
+**① 每日日志** `daily_log/2026-04-23.md`：
+
+```markdown
+# 2026-04-23 开发日志
+
+## 今天做了什么
+
+- 调通了 OV5640 摄像头 I2C 通信，根因是 RESET 引脚时序问题
+- 写了字符设备驱动的 ioctl 接口，支持曝光和白平衡设置
+- 阅读了正点原子 V4L2 章节，了解 VIDIOC_REQBUFS 的用法
+
+## 遇到的问题
+
+- v4l2-ctl 采图时偶发 EAGAIN，暂时用 select + 超时处理规避
+  - 怀疑是 DMA 缓冲区分配不足，待查
+- CMakeLists.txt 里 OpenCV 路径在 Ubuntu 22.04 上不对，已修复
+
+## 明天计划
+
+- 继续排查 EAGAIN 根因（看 DMA alloc 日志）
+- 实现自动曝光控制逻辑
+```
+
+**提交命令**：
+
+```powershell
+# 每天结束提交一次
+git add daily_log/2026-04-23.md
+git commit -m "log: 2026-04-23 日志，调通摄像头 I2C"
+# post-commit 钩子自动推飞书，不需要 push 也能同步到飞书
+```
+
+> **只想推飞书、不想推 GitHub**：直接在本地提交，钩子会推飞书。
+> 或者跳过 Git 直接推：`python feishu/feishu_writer.py daily_log/2026-04-23.md`
+
+**② 每周总结** `weekly/2026-W17.md`（周五花 5 分钟写，AI 帮你扩充）：
+
+```markdown
+# 2026 年第 17 周工作总结（2026-04-20 ～ 2026-04-25）
+
+## 本周完成
+
+- OV5640 摄像头驱动调通，支持 I2C 控制曝光和白平衡
+- 字符设备 ioctl 接口实现，已合入 main
+- V4L2 流式采图接口验证通过（连续 1000 帧无丢帧）
+- 解决 CMakeLists 在 Ubuntu 22.04 的兼容性问题
+
+## 遗留问题
+
+- 偶发 EAGAIN（频率约 1/500 帧），根因待查（P2）
+
+## 下周计划
+
+- 调查并修复偶发 EAGAIN
+- 实现自动曝光控制（AEC）
+- 编写 V4L2 驱动使用文档
+```
+
+**提交命令**：
+
+```powershell
+git add weekly/2026-W17.md
+git commit -m "weekly: 第17周总结，摄像头驱动调通"
+git push
+# GitHub Actions 推送飞书，周报自动归档
+```
+
+**飞书里会出现**：完整周报内容，按周归档，以后搜索「第17周」或「摄像头」就能找到。
+
+---
+
+### 场景三：知识沉淀（踩坑记录）
+
+**目标**：遇到问题解决后花 10 分钟写下来提交，飞书里自动生成一篇可检索的知识文章。新人遇到同样的坑，搜飞书直接找到，不需要再问人。
+
+**文件示例** `notes/2026-04-23_OV5640-I2C-NAK-fix.md`：
+
+```markdown
+# OV5640 摄像头 I2C NAK 问题解决记录
+
+## 环境
+
+- 开发板：i.MX6ULL
+- 内核版本：5.15.71
+- 摄像头：OV5640（I2C 地址 0x3C）
+
+## 问题现象
+
+```bash
+dmesg | grep ov5640
+# [ 3.412] ov5640 1-003c: I2C write to addr 0x3008 failed, ret=-5
+# [ 3.413] ov5640 1-003c: write reg error: -5
+```
+
+`/dev/video0` 不出现，`v4l2-ctl --list-devices` 无输出。
+
+## 排查过程
+
+1. 用 i2cdetect 扫描：`i2cdetect -y 1` — 0x3C 位置出现 `--`（无响应）
+2. 用示波器抓 SCL/SDA：发现地址帧之后设备未 ACK
+3. 查 OV5640 Datasheet 第 2.7 节：复位后需等待 5ms，但
+   硬件 RESET 引脚拉低时间不够（驱动里只延迟了 1ms）
+
+## 根本原因
+
+`ov5640_probe()` 里 RESET 引脚释放后等待时间不足。
+OV5640 内部上电时序要求：RESET 低 → 等 ≥20ms → 释放 → 等 ≥1ms → 开始 I2C。
+
+## 解决方案
+
+```c
+/* 修复前 */
+gpiod_set_value(priv->reset_gpio, 0);
+msleep(1);
+gpiod_set_value(priv->reset_gpio, 1);
+
+/* 修复后 */
+gpiod_set_value(priv->reset_gpio, 0);
+msleep(50);   /* 保守起见用 50ms */
+gpiod_set_value(priv->reset_gpio, 1);
+msleep(10);   /* 释放后再等 10ms 再开始 I2C */
+```
+
+## 验证
+
+```bash
+insmod ov5640.ko
+dmesg | tail -5
+# [OK] ov5640 1-003c: OV5640 detected, revision 0x5640
+v4l2-ctl --device=/dev/video0 --stream-mmap --stream-count=100
+# [OK] 100 帧全部采集成功，无报错
+```
+
+## 关键词
+
+OV5640、I2C NAK、RESET 时序、摄像头驱动、i.MX6ULL
+```
+
+**提交命令**：
+
+```powershell
+git add notes/2026-04-23_OV5640-I2C-NAK-fix.md
+git commit -m "note: OV5640 I2C NAK 根因分析与修复，RESET 时序问题"
+git push
+```
+
+**飞书里会出现**：一篇完整的踩坑记录文章，带代码块、排查步骤、解决方案。
+任何人搜索「OV5640」或「I2C NAK」都能立刻找到。
+
+> **最佳实践**：文件名格式 `YYYY-MM-DD_关键词.md`，方便按时间或关键词检索。
+> 文末加「关键词」行，飞书全文搜索时命中率更高。
+
+---
+
+### 场景四：AI 上下文管理
+
+**目标**：把每天和 AI 的讨论要点记录下来提交，下次开新对话时直接把记录文件贴给 AI，它立刻知道项目背景，不需要重新介绍。
+
+**文件示例** `ai_context/2026-04-23.md`：
+
+```markdown
+# AI 对话上下文记录 — 2026-04-23
+
+## 项目背景
+
+i.MX6ULL 开发板，编写 OV5640 MIPI 摄像头的 V4L2 驱动。
+内核 5.15，工具链 arm-linux-gnueabihf-gcc 10.3。
+
+## 今日讨论要点
+
+### 问题：OV5640 I2C NAK
+- **根因**：RESET 引脚时序不够，上电后等待时间 <20ms
+- **解法**：延长到 50ms，已验证通过
+- **AI 给出的关键提示**：查 Datasheet Section 2.7，注意 PWDN 和 RESET 的顺序
+
+### 问题：V4L2 偶发 EAGAIN
+- **现象**：`VIDIOC_DQBUF` 在约 1/500 帧返回 EAGAIN
+- **当前状态**：怀疑是 DMA 缓冲区不足，AI 建议检查 `VIDIOC_REQBUFS` 的 count 参数
+- **待做**：把 count 从 4 改到 8，看是否改善（下次对话继续）
+
+## 当前代码状态
+
+```bash
+git log --oneline -3
+# a1b2c3d fix: OV5640 RESET 时序，延长到 50ms
+# 9e8f7a6 feat: ioctl 接口支持曝光和白平衡设置
+# 5c4d3b2 init: 初始化项目，搭好 V4L2 框架
+```
+
+## 下次对话要告诉 AI 的事情
+
+1. 这个文件的背景
+2. 「EAGAIN 问题还没解决，怀疑是 DMA count 不够，上次 AI 建议把 count 改到 8」
+3. 贴上 `dmesg | grep alloc` 的输出请 AI 分析
+
+## 参考资料位置
+
+- Datasheet：`docs/OV5640_datasheet_v2.3.pdf`
+- 正点原子驱动参考：`reference/atk_ov5640.c`
+```
+
+**提交命令**：
+
+```powershell
+git add ai_context/2026-04-23.md
+git commit -m "ai-ctx: 2026-04-23 上下文，I2C NAK 已解，EAGAIN 待查"
+git push
+```
+
+**下次开新对话时使用**：
+
+```
+# 直接把文件内容贴给 AI：
+"这是我昨天的项目上下文记录，请先读完再回答：
+[粘贴 ai_context/2026-04-23.md 的内容]
+我今天想继续解决 EAGAIN 问题……"
+```
+
+**飞书里会出现**：按日期排列的 AI 对话记录，跨日期搜索「EAGAIN」「OV5640」就能找到历史讨论的结论。
+
+---
+
+### 仅推飞书（不走 GitHub）的快速命令
+
+```powershell
+# 任何 .md 文件直接推飞书，不需要 git add / git commit / git push
+cd C:\tools\feishu-sync   # 工具目录
+
+# 推单个文件
+python feishu/feishu_writer.py daily_log/2026-04-23.md
+
+# 清空飞书文档后重写
+python feishu/feishu_writer.py notes/2026-04-23_xxx.md --clear
+
+# 只验证解析，不实际推送
+python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
+```
+
+> **什么时候用「仅推飞书」**：
+> - 临时记录，不想污染 Git 历史
+> - 只需要飞书文档更新，不需要版本管理
+> - 批量把旧文档迁移到飞书
 
 ---
 

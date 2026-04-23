@@ -57,15 +57,28 @@ class FeishuClient:
 
     def _call(self, method: str, path: str, **kwargs) -> dict[str, Any]:
         url = f"{self.domain}{path}"
-        r = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
-        try:
-            data = r.json()
-        except ValueError:
-            r.raise_for_status()
-            raise
-        if data.get("code") not in (0, None):
-            raise RuntimeError(f"{method} {path} 失败: {data}")
-        return data
+        last_err: Exception | None = None
+        for attempt in range(4):
+            try:
+                r = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
+                try:
+                    data = r.json()
+                except ValueError:
+                    r.raise_for_status()
+                    raise
+                if data.get("code") not in (0, None):
+                    raise RuntimeError(f"{method} {path} 失败: {data}")
+                return data
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.SSLError,
+                    requests.exceptions.Timeout,
+                    ConnectionResetError,
+                    OSError) as e:
+                last_err = e
+                wait = 3 * (attempt + 1)
+                print(f"[retry] 网络错误，{wait}s 后重试（第{attempt+1}次）: {e}", file=sys.stderr)
+                time.sleep(wait)
+        raise RuntimeError(f"连续4次网络错误: {last_err}")
 
     # ---- Wiki / Docx ----
 

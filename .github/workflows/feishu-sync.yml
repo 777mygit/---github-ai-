@@ -7,6 +7,10 @@ on:
       - "book/chapters/**.md"
       - "README.md"
       - "feishu/feishu_writer.py"
+      - "daily_log/**.md"
+      - "weekly/**.md"
+      - "notes/**.md"
+      - "ai_context/**.md"
 
   # 也可手动触发（用于全量重建）
   workflow_dispatch:
@@ -44,7 +48,10 @@ jobs:
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
         run: |
-          cat book/chapters/*.md > /tmp/all.md
+          # 合并所有受监控目录的 .md 文件（按路径排序）
+          find book/chapters daily_log weekly notes ai_context README.md \
+            -name "*.md" 2>/dev/null | sort | xargs cat > /tmp/all.md || \
+          cat README.md > /tmp/all.md
           python feishu/feishu_writer.py /tmp/all.md --clear
           echo "✅ 全量重建完成"
 
@@ -56,8 +63,8 @@ jobs:
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
         run: |
-          # 匹配 book/chapters/ 下的 .md 和根目录 README.md
-          CHANGED=$(git diff HEAD~1 --name-only | grep -E "^(book/chapters/.+\.md|README\.md)$" || true)
+          # 匹配所有受监控的 .md 文件
+          CHANGED=$(git diff HEAD~1 --name-only | grep -E "^(book/chapters/.+\.md|README\.md|daily_log/.+\.md|weekly/.+\.md|notes/.+\.md|ai_context/.+\.md)$" || true)
           if [ -z "$CHANGED" ]; then
             echo "本次 push 无 .md 变更，跳过"
             exit 0
