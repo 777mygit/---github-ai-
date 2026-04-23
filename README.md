@@ -6,8 +6,6 @@
 
 ## 为什么需要这套系统
 
-### 团队项目管理的痛点
-
 开发团队日常面临三个割裂：
 
 - **代码在 GitHub**，但非技术成员看不懂
@@ -16,23 +14,16 @@
 
 这套系统把三者打通：**代码提交的同时，飞书自动更新文档**，AI 生成的变更摘要也实时写入，让每个人都能看到项目的最新状态。
 
-### 四类核心使用场景
+---
 
-**1. 团队项目管理**
+## 两类使用模式
 
-每次 `git commit` 自动记录「改了什么 / 为什么 / 优先级」，飞书里的变更日志始终是最新的。新成员入职当天就能看到项目完整历史，不需要找人口头交接。
+本系统支持两类使用模式，覆盖团队协作和个人使用的不同需求：
 
-**2. 个人开发日志 / 周报**
-
-每天开发结束提交一次 `daily_log.md`，AI 自动汇总成摘要推进飞书。周五再提交 `weekly_report.md`，一周工作内容一键生成，再也不需要专门抽时间写周报。
-
-**3. 知识沉淀（环境部署 / 踩坑记录）**
-
-遇到问题，解决后把过程写进 `notes/` 目录提交。飞书里自动有一篇「XXX 问题的解决方案」，新人遇到同样的坑直接搜索就能找到，不需要再问人。
-
-**4. AI 上下文管理**
-
-今天和 AI 讨论了什么、解决了什么问题，提交 `ai_context/YYYY-MM-DD.md` 记录下来。下次开新对话时把文件贴给 AI，它立刻知道项目背景。飞书里还能跨日期搜索，快速找到「上周那个网络问题是怎么解决的」。
+| 模式 | 推送目标 | 适用场景 |
+| --- | --- | --- |
+| **飞书 + GitHub 联动** | 飞书文档 + GitHub 仓库 | 团队项目管理，代码和文档同步 |
+| **只推飞书** | 仅飞书文档 | 个人日志、踩坑记录、AI 上下文，不污染 Git 历史 |
 
 ---
 
@@ -49,7 +40,7 @@ linux-learning        ──►  飞书「Linux 应用开发大全」页面
 your-next-project     ──►  飞书「你的下一个项目」页面
 ```
 
-每个仓库在 GitHub Secrets 里单独配置 `FEISHU_WIKI_TOKEN`，指向对应的飞书页面。代码推送时，Actions 自动同步到**这个项目专属的飞书页面**，和其他项目完全隔离。
+每个仓库在 GitHub Secrets 里单独配置 `FEISHU_WIKI_TOKEN`，指向对应的飞书页面。推送时，Actions 自动同步到**这个项目专属的飞书页面**，和其他项目完全隔离。
 
 ---
 
@@ -58,14 +49,17 @@ your-next-project     ──►  飞书「你的下一个项目」页面
 ```
 开发者
   │
-  ├── git commit ──► post-commit hook ──► feishu_writer.py ──► 飞书 Wiki（本项目页面）
+  ├─ 飞书 + GitHub 联动（团队项目管理）
+  │    git commit ──► post-commit hook ──► feishu_writer.py ──► 飞书 Wiki
   │                        │
   │                   ai_summarize.py ──► OpenAI（可选）──► 飞书变更日志
+  │    git push  ──► GitHub Actions  ──► feishu_writer.py ──► 飞书 Wiki
+  │                        ▲
+  │             读取 secrets.FEISHU_WIKI_TOKEN（每仓库设一次）
   │
-  └── git push ──► GitHub Actions ──► feishu_writer.py ──► 飞书 Wiki（本项目页面）
-                         ▲
-              读取 secrets.FEISHU_WIKI_TOKEN
-            （每个仓库设一次，永远不用改）
+  └─ 只推飞书（个人日志/踩坑/AI上下文）
+       python feishu/feishu_writer.py 文件.md ──► 飞书 Wiki
+       （无需 git push，也不会走 GitHub Actions）
 ```
 
 ---
@@ -75,25 +69,24 @@ your-next-project     ──►  飞书「你的下一个项目」页面
 ```
 .
 ├── feishu/
-│   ├── feishu_writer.py      # 核心：Markdown → 飞书块（支持表格/代码/标题/列表）
+│   ├── feishu_writer.py      # 核心：Markdown → 飞书块（含重试逻辑）
 │   ├── ai_summarize.py       # AI 摘要：git diff → GPT → 飞书变更日志
 │   ├── create_wiki_page.py   # 工具：自动在飞书创建新子页面
 │   ├── .env.example          # 环境变量模板（复制为 .env 填写真实值）
-│   ├── .gitignore            # 排除 .env，防止密钥泄露到 Git
 │   └── requirements.txt      # Python 依赖
 ├── .github/
 │   └── workflows/
 │       └── feishu-sync.yml   # GitHub Actions：push 时自动同步飞书
-├── .git/
-│   └── hooks/
-│       └── post-commit       # 本地钩子：commit 后自动推飞书（可选备用）
-├── daily_log/                # 每日开发日志（自动同步飞书）
+├── .git/hooks/post-commit    # 本地钩子：commit 后自动推飞书
+│
+├── book/chapters/            # 团队项目文档（联动模式）
+├── daily_log/                # 每日开发日志（只推飞书）
 │   └── YYYY-MM-DD.md
-├── weekly/                   # 每周总结（自动同步飞书）
+├── weekly/                   # 每周总结（只推飞书）
 │   └── YYYY-WXX.md
-├── notes/                    # 踩坑笔记 / 知识沉淀（自动同步飞书）
+├── notes/                    # 踩坑记录 / 知识沉淀（只推飞书）
 │   └── YYYY-MM-DD_问题标题.md
-├── ai_context/               # AI 对话上下文记录（自动同步飞书）
+├── ai_context/               # AI 对话上下文（只推飞书）
 │   └── YYYY-MM-DD.md
 └── README.md
 ```
@@ -188,20 +181,11 @@ git config --global user.email "you@example.com"
 **1.3 本地初始化并推送**
 
 ```powershell
-# 进入项目目录
 cd Z:\qt_demo\EmbeddedQtTutorial\05_opencv_camera
-
-# 初始化 Git
 git init
-
-# 第一次提交
 git add .
 git commit -m "init: 初始化 Qt OpenCV 摄像头项目"
-
-# 关联远程仓库（把 URL 换成你自己的）
 git remote add origin https://github.com/yourname/qt-opencv-camera.git
-
-# 推送
 git push -u origin main
 ```
 
@@ -236,9 +220,9 @@ git push -u origin main
 
 > ⚠ 常见问题 1：搜索框输入应用名但**没有结果** → 应用还没有发布。回飞书开放平台 → 版本管理与发布 → 申请发布 → 通过审批后再来搜。
 >
-> ⚠ 常见问题 2：授权完成但推送仍返回 **403 forBidden** → 授权的页面不对。必须打开**推送目标页面本身**去授权，在父页面或知识库根目录授权不会自动继承到子页面的文档写入权限。
+> ⚠ 常见问题 2：授权完成但推送仍返回 **403 forBidden** → 授权的页面不对。必须打开**推送目标页面本身**去授权，在父页面或知识库根目录授权不会自动继承。
 >
-> ⚠ 常见问题 3：有很多页面都要授权，每次手动加太麻烦 → 在知识库根目录的「···」→「知识库设置」→「成员管理」→ 添加应用为「编辑者」，之后这个知识库里所有页面（包括未来新建的）都自动有权限，不需要逐页操作。
+> ⚠ 常见问题 3：有很多页面都要授权，每次手动加太麻烦 → 在知识库根目录的「···」→「知识库设置」→「成员管理」→ 添加应用为「编辑者」，之后这个知识库里所有页面都自动有权限。
 
 ---
 
@@ -263,17 +247,16 @@ copy feishu\.env.example feishu\.env
 ```env
 FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxxxxxx
 FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-FEISHU_WIKI_TOKEN=AbCdEfGhIjKlMnOpQrSt   # ← 这是本项目飞书页面的 token
+FEISHU_WIKI_TOKEN=AbCdEfGhIjKlMnOpQrSt
 FEISHU_OPEN_DOMAIN=https://open.feishu.cn
 ```
 
-> ⚠ 常见问题：`.env` 文件已在 `.gitignore` 里，不会被 Git 追踪。如果 `git status` 里看到 `.env` 出现在「Changes to be committed」里，立刻 `git rm --cached feishu/.env` 取消追踪。
+> ⚠ `.env` 文件已在 `.gitignore` 里，不会被 Git 追踪。如果 `git status` 里看到 `.env` 出现在「Changes to be committed」里，立刻 `git rm --cached feishu/.env` 取消追踪。
 
 **3.3 验证连通性（干跑，不写入飞书）**
 
 ```powershell
-cd C:\tools\feishu-sync
-python feishu/feishu_writer.py Z:\qt_demo\...\README.md --dry-run
+python feishu/feishu_writer.py README.md --dry-run
 ```
 
 预期输出：
@@ -283,9 +266,8 @@ python feishu/feishu_writer.py Z:\qt_demo\...\README.md --dry-run
 ```
 
 如果解析没问题，正式推送：
-
 ```powershell
-python feishu/feishu_writer.py Z:\qt_demo\...\README.md
+python feishu/feishu_writer.py README.md
 ```
 
 预期输出：
@@ -314,144 +296,153 @@ python feishu/feishu_writer.py Z:\qt_demo\...\README.md
 | `FEISHU_WIKI_TOKEN` | 本项目飞书页面的 token | **每个仓库不同** ← 核心 |
 | `OPENAI_API_KEY` | OpenAI Key（可选） | 按需 |
 
-> **关键点**：`FEISHU_APP_ID` 和 `FEISHU_APP_SECRET` 在所有仓库里填一样的值（同一个飞书应用）。只有 `FEISHU_WIKI_TOKEN` 每个仓库填对应项目的飞书页面 token，**设置一次永远不用改**。
-
+> **关键点**：`FEISHU_APP_ID` 和 `FEISHU_APP_SECRET` 在所有仓库里填一样的值（同一个飞书应用）。只有 `FEISHU_WIKI_TOKEN` 每个仓库填对应飞书页面的 token，**设置一次永远不用改**。
+>
 > ⚠ 常见问题：Actions 失败提示 `exit code 1` → 99% 是 Secrets 没配置或配置错误。去 Actions 日志里看具体报错，通常是 `401`（Secret 错）或 `403`（飞书页面没授权应用）。
 
 ---
 
-### 第 5 步：日常使用——提交即同步
+## 一、飞书 + GitHub 联动：团队项目管理
 
-**场景一：更新项目文档**
+> 适用于：团队协作项目，需要代码版本管理 + 飞书文档同步双轨并行。
+> 每次 `git push`，GitHub Actions 自动把改动的 `.md` 文件同步到飞书，AI 同时生成变更摘要。
 
-```powershell
-cd Z:\qt_demo\EmbeddedQtTutorial\05_opencv_camera
-
-git add docs\camera_setup.md
-git commit -m "docs: 补充 OV5640 摄像头初始化流程"
-# post-commit 钩子自动推飞书（本地）
-
-git push
-# GitHub Actions 触发，云端再同步一次（确保团队其他成员的 push 也能同步）
-```
-
-**场景二：记录踩坑笔记**
-
-```powershell
-# 新建笔记文件，写入解决过程后提交
-git add notes\2026-04-23_opencv_link_error.md
-git commit -m "note: 记录 OpenCV 动态库路径问题及解决方案"
-# AI 自动生成摘要写入飞书：「修复 OpenCV 链接错误，P2 优先级，影响 Linux 构建环境」
-```
-
-**场景三：写周报**
-
-```powershell
-# 内容可以很粗糙，AI 帮你整理成结构化周报
-git add weekly\2026-W17.md
-git commit -m "weekly: 第17周工作总结"
-```
-
-**场景四：全量重建飞书文档（文档结构大改之后）**
+### 工作流程
 
 ```
-GitHub 仓库 → Actions → Sync to Feishu → Run workflow
-→ 输入 clear=true → Run
+写文档 → git add → git commit → git push
+                        │               │
+               post-commit 钩子      GitHub Actions
+                        │               │
+                   推送飞书（本地）  推送飞书（云端，团队共享）
+                        └───────────────┘
+                             飞书文档自动更新
 ```
 
----
-
-## 四个场景详细示例
-
-> 以下每个场景都给出了**真实文件内容**、**Git 操作命令**和**飞书里会出现什么**。
-> 直接复制粘贴即可上手，无需额外配置。
-
----
-
-### 场景一：团队项目管理（Git + 飞书联动）
-
-**目标**：每次代码变更，飞书里自动出现「改了什么 / 为什么 / 优先级」。
-
-**文件示例** `book/chapters/bugfix-2026-04-23.md`：
+### 文件示例：`book/chapters/bugfix-2026-04-23.md`
 
 ```markdown
-## 修复：OV5640 摄像头初始化失败
+## 修复：飞书 API 网络抖动导致推送中断
 
-### 问题描述
-板子上电后 `/dev/video0` 不出现，dmesg 显示 I2C NAK。
+### 问题现象
+
+推送大文档到飞书时，偶发 `ConnectionResetError(10054)` 导致脚本中断：
+WinError 10054: 远程主机强迫关闭了一个现有的连接
+
+频率约 1/5 次大文档推送，网络状况差时更高。
 
 ### 根本原因
-RESET 引脚默认高，需要先拉低 50ms 再释放，等待内部寄存器稳定。
-原驱动缺少这段时序。
 
-### 修复方法
-在 `ov5640_probe()` 里增加：
-```c
-gpiod_set_value(priv->reset_gpio, 0);
-msleep(50);
-gpiod_set_value(priv->reset_gpio, 1);
-msleep(10);
+飞书 API 服务器会主动关闭空闲过久的 HTTPS 连接。
+当脚本处理 Markdown 解析耗时较长，再发请求时连接已被服务端回收。
+
+### 解决方案
+
+在 `feishu_writer.py` 的 `_call()` 方法中加入指数退避重试，
+捕获 `ConnectionError / SSLError / OSError`，最多重试 4 次：
+
+```python
+for attempt in range(4):
+    try:
+        r = requests.request(...)
+        return r.json()
+    except (ConnectionError, SSLError, OSError) as e:
+        wait = 3 * (attempt + 1)
+        print(f"[retry] 网络错误，{wait}s 后重试（第{attempt+1}次）")
+        time.sleep(wait)
+raise RuntimeError("连续4次网络错误")
 ```
 
-### 验证方法
-`v4l2-ctl --device=/dev/video0 --stream-mmap --stream-count=10`
-连续采 10 帧无报错即通过。
+### 验证
+
+连续推送 5 次 600+ 块的大文档，均在 1～2 次重试后成功，不再中断。
+
+### 关键词
+
+飞书 API、ConnectionResetError、网络抖动、重试、feishu_writer
 ```
 
-**提交命令**：
+**提交并同步**：
 
 ```powershell
 git add book/chapters/bugfix-2026-04-23.md
-git commit -m "fix: OV5640 摄像头 I2C NAK，增加 RESET 时序"
+git commit -m "fix: feishu_writer 加网络重试，解决大文档推送中断问题"
 git push
+# GitHub Actions 自动把这个文件推飞书
+# AI 自动生成摘要：「修复飞书 API 网络抖动问题，加指数退避重试，P2 优先级」
 ```
 
 **飞书里会出现**：
-- 该 .md 文件内容自动追加到飞书文档
-- AI 摘要块：「**修复** OV5640 摄像头 I2C NAK 问题，根因是 RESET 引脚时序缺失，P1 优先级」
+- 文件完整内容（含代码块、列表）自动追加到飞书文档
+- AI 摘要块：改了什么 / 为什么 / 优先级，让不看代码的成员也能理解
+
+---
+
+## 二、只推飞书：个人三大场景
+
+> 适用于：不需要 GitHub 版本管理的个人记录。
+> 直接运行 `python feishu/feishu_writer.py 文件.md` 推送，**不走 Git，不走 Actions**。
+
+### 快速命令
+
+```powershell
+# 推单个文件到飞书
+python feishu/feishu_writer.py daily_log/2026-04-23.md
+
+# 清空飞书文档后全量重写
+python feishu/feishu_writer.py notes/2026-04-23_xxx.md --clear
+
+# 只验证解析，不实际推送
+python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
+```
+
+> 什么时候用「只推飞书」：
+> - 临时记录，不想污染 Git 历史
+> - 个人日志、踩坑笔记、AI 上下文——这类内容只需要飞书可检索，不需要版本对比
+> - 批量把旧文档迁移到飞书
 
 ---
 
 ### 场景二：个人开发日志 / 周报自动生成
 
-**目标**：平时写日志提交，周五把当周日志汇总一下，周报就完成了。不需要专门抽时间写周报。
+**目标**：每天写几行日志，周五把本周日志汇总一下，周报就完成了。再也不需要专门抽时间写周报。
 
-**① 每日日志** `daily_log/2026-04-23.md`：
+#### ① 每日日志：`daily_log/2026-04-23.md`
 
 ```markdown
 # 2026-04-23 开发日志
 
 ## 今天做了什么
 
-- 调通了 OV5640 摄像头 I2C 通信，根因是 RESET 引脚时序问题
+- 调通了 OV5640 摄像头 I2C 通信，根因是 RESET 引脚时序不够（<20ms）
 - 写了字符设备驱动的 ioctl 接口，支持曝光和白平衡设置
 - 阅读了正点原子 V4L2 章节，了解 VIDIOC_REQBUFS 的用法
 
 ## 遇到的问题
 
 - v4l2-ctl 采图时偶发 EAGAIN，暂时用 select + 超时处理规避
-  - 怀疑是 DMA 缓冲区分配不足，待查
+  - 怀疑是 DMA 缓冲区分配不足（count=4），待查
 - CMakeLists.txt 里 OpenCV 路径在 Ubuntu 22.04 上不对，已修复
 
 ## 明天计划
 
-- 继续排查 EAGAIN 根因（看 DMA alloc 日志）
+- 继续排查 EAGAIN 根因（DMA count 从 4 改到 8 试试）
 - 实现自动曝光控制逻辑
 ```
 
-**提交命令**：
+**推送飞书**：
 
 ```powershell
-# 每天结束提交一次
+# 方式一：只推飞书，不走 Git（最快）
+python feishu/feishu_writer.py daily_log/2026-04-23.md
+
+# 方式二：同时记录到 Git + 推飞书（post-commit 钩子自动触发推送）
 git add daily_log/2026-04-23.md
-git commit -m "log: 2026-04-23 日志，调通摄像头 I2C"
-# post-commit 钩子自动推飞书，不需要 push 也能同步到飞书
+git commit -m "log: 2026-04-23 日志，摄像头 I2C 调通"
+# 不需要 git push，钩子已推飞书
 ```
 
-> **只想推飞书、不想推 GitHub**：直接在本地提交，钩子会推飞书。
-> 或者跳过 Git 直接推：`python feishu/feishu_writer.py daily_log/2026-04-23.md`
-
-**② 每周总结** `weekly/2026-W17.md`（周五花 5 分钟写，AI 帮你扩充）：
+#### ② 每周总结：`weekly/2026-W17.md`
 
 ```markdown
 # 2026 年第 17 周工作总结（2026-04-20 ～ 2026-04-25）
@@ -462,119 +453,119 @@ git commit -m "log: 2026-04-23 日志，调通摄像头 I2C"
 - 字符设备 ioctl 接口实现，已合入 main
 - V4L2 流式采图接口验证通过（连续 1000 帧无丢帧）
 - 解决 CMakeLists 在 Ubuntu 22.04 的兼容性问题
+- 修复飞书 API 网络抖动问题（feishu_writer 加重试逻辑）
 
 ## 遗留问题
 
-- 偶发 EAGAIN（频率约 1/500 帧），根因待查（P2）
+- 偶发 EAGAIN（频率约 1/500 帧），根因待查（P2 优先级）
 
 ## 下周计划
 
-- 调查并修复偶发 EAGAIN
+- 调查并修复偶发 EAGAIN（DMA 缓冲区数量问题）
 - 实现自动曝光控制（AEC）
 - 编写 V4L2 驱动使用文档
 ```
 
-**提交命令**：
+**推送飞书**：
 
 ```powershell
-git add weekly/2026-W17.md
-git commit -m "weekly: 第17周总结，摄像头驱动调通"
-git push
-# GitHub Actions 推送飞书，周报自动归档
+python feishu/feishu_writer.py weekly/2026-W17.md
+# 飞书里自动归档，以后搜索「第17周」或「摄像头」就能找到
 ```
-
-**飞书里会出现**：完整周报内容，按周归档，以后搜索「第17周」或「摄像头」就能找到。
 
 ---
 
 ### 场景三：知识沉淀（踩坑记录）
 
-**目标**：遇到问题解决后花 10 分钟写下来提交，飞书里自动生成一篇可检索的知识文章。新人遇到同样的坑，搜飞书直接找到，不需要再问人。
+**目标**：遇到问题解决后花 10 分钟写下来推飞书。新人遇到同样的坑，搜飞书直接找到，不需要再问人。
 
-**文件示例** `notes/2026-04-23_OV5640-I2C-NAK-fix.md`：
+#### 文件示例：`notes/2026-04-23_feishu-api-retry.md`
 
 ```markdown
-# OV5640 摄像头 I2C NAK 问题解决记录
+# 飞书 API 网络抖动导致推送中断 — 解决记录
 
 ## 环境
 
-- 开发板：i.MX6ULL
-- 内核版本：5.15.71
-- 摄像头：OV5640（I2C 地址 0x3C）
+- OS：Windows 10
+- Python：3.14
+- 目标：feishu_writer.py 推送 600+ 块的大文档
 
 ## 问题现象
 
 ```bash
-dmesg | grep ov5640
-# [ 3.412] ov5640 1-003c: I2C write to addr 0x3008 failed, ret=-5
-# [ 3.413] ov5640 1-003c: write reg error: -5
+python feishu/feishu_writer.py _push_all.md --clear
+# [parse] 解析出 614 个单元
+# [auth] 获取 tenant_access_token ... ok
+# [wiki] node=IZjQwbvTkixGMlkuoRVcRrVOnAh -> document_id=XhmDdU1...
+# Traceback (most recent call last):
+#   File ".../urllib3/connectionpool.py", line 464, in _make_request
+#     self._validate_conn(conn)
+# ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接
 ```
 
-`/dev/video0` 不出现，`v4l2-ctl --list-devices` 无输出。
+出现概率：约 1/5 次大文档推送，网络状况差时更高。
 
 ## 排查过程
 
-1. 用 i2cdetect 扫描：`i2cdetect -y 1` — 0x3C 位置出现 `--`（无响应）
-2. 用示波器抓 SCL/SDA：发现地址帧之后设备未 ACK
-3. 查 OV5640 Datasheet 第 2.7 节：复位后需等待 5ms，但
-   硬件 RESET 引脚拉低时间不够（驱动里只延迟了 1ms）
+1. 首次出错以为是代码 bug，反复检查无误
+2. 加日志发现错误发生在 `auth` 之后第一次 API 调用
+3. 怀疑是服务端主动关闭了空闲连接：Markdown 解析耗时 > 连接 Keep-Alive 超时
+4. 用 Wireshark 抓包确认：服务端发了 TCP RST
 
 ## 根本原因
 
-`ov5640_probe()` 里 RESET 引脚释放后等待时间不足。
-OV5640 内部上电时序要求：RESET 低 → 等 ≥20ms → 释放 → 等 ≥1ms → 开始 I2C。
+飞书 API 服务端会关闭长时间空闲的 HTTPS 连接（约 30s）。
+脚本解析 Markdown 时不发请求，连接被服务端回收，下次请求时报 `WinError 10054`。
 
 ## 解决方案
 
-```c
-/* 修复前 */
-gpiod_set_value(priv->reset_gpio, 0);
-msleep(1);
-gpiod_set_value(priv->reset_gpio, 1);
+在 `feishu_writer.py` 的 `_call()` 方法加指数退避重试：
 
-/* 修复后 */
-gpiod_set_value(priv->reset_gpio, 0);
-msleep(50);   /* 保守起见用 50ms */
-gpiod_set_value(priv->reset_gpio, 1);
-msleep(10);   /* 释放后再等 10ms 再开始 I2C */
+```python
+for attempt in range(4):
+    try:
+        r = requests.request(method, url, headers=self._headers(), timeout=30, **kwargs)
+        data = r.json()
+        if data.get("code") not in (0, None):
+            raise RuntimeError(f"API 失败: {data}")
+        return data
+    except (requests.exceptions.ConnectionError,
+            requests.exceptions.SSLError,
+            OSError) as e:
+        wait = 3 * (attempt + 1)   # 3s, 6s, 9s, 12s
+        print(f"[retry] 网络错误，{wait}s 后重试（第{attempt+1}次）: {e}")
+        time.sleep(wait)
+raise RuntimeError("连续4次网络错误，放弃")
 ```
 
 ## 验证
 
-```bash
-insmod ov5640.ko
-dmesg | tail -5
-# [OK] ov5640 1-003c: OV5640 detected, revision 0x5640
-v4l2-ctl --device=/dev/video0 --stream-mmap --stream-count=100
-# [OK] 100 帧全部采集成功，无报错
-```
+连续推送 5 次 600+ 块的大文档，均能在 1～2 次重试后成功，不再因网络抖动中断。
 
 ## 关键词
 
-OV5640、I2C NAK、RESET 时序、摄像头驱动、i.MX6ULL
+飞书 API、ConnectionResetError、WinError 10054、网络重试、feishu_writer、Windows
 ```
 
-**提交命令**：
+**推送飞书**：
 
 ```powershell
-git add notes/2026-04-23_OV5640-I2C-NAK-fix.md
-git commit -m "note: OV5640 I2C NAK 根因分析与修复，RESET 时序问题"
-git push
+python feishu/feishu_writer.py notes/2026-04-23_feishu-api-retry.md
+# 飞书里生成一篇完整的知识文章，搜索「ConnectionResetError」即可找到
 ```
 
-**飞书里会出现**：一篇完整的踩坑记录文章，带代码块、排查步骤、解决方案。
-任何人搜索「OV5640」或「I2C NAK」都能立刻找到。
-
-> **最佳实践**：文件名格式 `YYYY-MM-DD_关键词.md`，方便按时间或关键词检索。
-> 文末加「关键词」行，飞书全文搜索时命中率更高。
+> **最佳实践**：
+> - 文件名格式：`YYYY-MM-DD_关键词.md`，方便按时间或关键词检索
+> - 文末加「关键词」行，飞书全文搜索时命中率更高
+> - 排查过程越详细越好，三个月后的你会感谢现在的自己
 
 ---
 
 ### 场景四：AI 上下文管理
 
-**目标**：把每天和 AI 的讨论要点记录下来提交，下次开新对话时直接把记录文件贴给 AI，它立刻知道项目背景，不需要重新介绍。
+**目标**：把每天和 AI 的讨论要点记录下来推飞书。下次开新对话时把记录文件贴给 AI，它立刻知道项目背景，不需要重新介绍。
 
-**文件示例** `ai_context/2026-04-23.md`：
+#### 文件示例：`ai_context/2026-04-23.md`
 
 ```markdown
 # AI 对话上下文记录 — 2026-04-23
@@ -583,81 +574,51 @@ git push
 
 i.MX6ULL 开发板，编写 OV5640 MIPI 摄像头的 V4L2 驱动。
 内核 5.15，工具链 arm-linux-gnueabihf-gcc 10.3。
+本套 feishu_writer 自动把开发日志同步到飞书。
 
 ## 今日讨论要点
 
-### 问题：OV5640 I2C NAK
-- **根因**：RESET 引脚时序不够，上电后等待时间 <20ms
-- **解法**：延长到 50ms，已验证通过
-- **AI 给出的关键提示**：查 Datasheet Section 2.7，注意 PWDN 和 RESET 的顺序
+### 问题 1：飞书 API 网络抖动（已解决）
+- **根因**：服务端关闭空闲 HTTPS 连接，脚本解析 Markdown 时不发请求
+- **解法**：feishu_writer._call() 加指数退避重试（最多 4 次）
+- **状态**：已验证，推 600+ 块大文档不再中断 ✅
 
-### 问题：V4L2 偶发 EAGAIN
-- **现象**：`VIDIOC_DQBUF` 在约 1/500 帧返回 EAGAIN
-- **当前状态**：怀疑是 DMA 缓冲区不足，AI 建议检查 `VIDIOC_REQBUFS` 的 count 参数
-- **待做**：把 count 从 4 改到 8，看是否改善（下次对话继续）
+### 问题 2：V4L2 采图偶发 EAGAIN（未解决）
+- **现象**：VIDIOC_DQBUF 在约 1/500 帧返回 EAGAIN
+- **AI 建议**：检查 VIDIOC_REQBUFS 的 count 参数，从 4 改到 8 试试
+- **状态**：待验证，下次对话继续 ⏳
 
 ## 当前代码状态
 
 ```bash
 git log --oneline -3
-# a1b2c3d fix: OV5640 RESET 时序，延长到 50ms
+# a1b2c3d fix: feishu_writer 加网络重试逻辑
 # 9e8f7a6 feat: ioctl 接口支持曝光和白平衡设置
-# 5c4d3b2 init: 初始化项目，搭好 V4L2 框架
+# 5c4d3b2 init: 初始化项目
 ```
 
-## 下次对话要告诉 AI 的事情
+## 下次对话告诉 AI
 
-1. 这个文件的背景
-2. 「EAGAIN 问题还没解决，怀疑是 DMA count 不够，上次 AI 建议把 count 改到 8」
+1. 把这个文件内容贴给 AI 作为背景
+2. EAGAIN 问题还没解决，DMA count=4 改到 8 还没试
 3. 贴上 `dmesg | grep alloc` 的输出请 AI 分析
-
-## 参考资料位置
-
-- Datasheet：`docs/OV5640_datasheet_v2.3.pdf`
-- 正点原子驱动参考：`reference/atk_ov5640.c`
 ```
 
-**提交命令**：
+**推送飞书**：
 
 ```powershell
-git add ai_context/2026-04-23.md
-git commit -m "ai-ctx: 2026-04-23 上下文，I2C NAK 已解，EAGAIN 待查"
-git push
+python feishu/feishu_writer.py ai_context/2026-04-23.md
+# 飞书里按日期归档，跨日期搜索「EAGAIN」就能找到历史讨论结论
 ```
 
 **下次开新对话时使用**：
 
 ```
-# 直接把文件内容贴给 AI：
-"这是我昨天的项目上下文记录，请先读完再回答：
-[粘贴 ai_context/2026-04-23.md 的内容]
+[把 ai_context/2026-04-23.md 的内容粘贴给 AI]
+
+"这是我昨天的项目上下文记录，请先读完再回答我的问题。
 我今天想继续解决 EAGAIN 问题……"
 ```
-
-**飞书里会出现**：按日期排列的 AI 对话记录，跨日期搜索「EAGAIN」「OV5640」就能找到历史讨论的结论。
-
----
-
-### 仅推飞书（不走 GitHub）的快速命令
-
-```powershell
-# 任何 .md 文件直接推飞书，不需要 git add / git commit / git push
-cd C:\tools\feishu-sync   # 工具目录
-
-# 推单个文件
-python feishu/feishu_writer.py daily_log/2026-04-23.md
-
-# 清空飞书文档后重写
-python feishu/feishu_writer.py notes/2026-04-23_xxx.md --clear
-
-# 只验证解析，不实际推送
-python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
-```
-
-> **什么时候用「仅推飞书」**：
-> - 临时记录，不想污染 Git 历史
-> - 只需要飞书文档更新，不需要版本管理
-> - 批量把旧文档迁移到飞书
 
 ---
 
@@ -689,6 +650,7 @@ python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
 | `401 Unauthorized` | App Secret 错误或已重置 | 更新 `.env` 和 GitHub Secrets |
 | `403 forBidden` | 该飞书页面没有单独给应用授权 | 打开**该页面**分享 → 搜应用名 → 可编辑 |
 | Actions `exit code 1` | Secrets 未配置或配置错误 | 检查仓库 Secrets 是否齐全 |
+| `ConnectionResetError 10054` | 飞书服务端关闭了空闲连接 | 已内置重试逻辑，最多重试 4 次自动恢复 |
 | 表格显示为纯文本 | 旧版 feishu_writer.py | 更新到最新版（`git pull` 本工具仓库） |
 | 速度很慢 | 飞书 5 QPS 限制 + sleep 0.2s | 正常，500 块约需 100 秒 |
 | 钩子没有触发 | Windows 下钩子文件名问题 | 确认 `.git/hooks/post-commit` **没有**文件扩展名 |
@@ -708,15 +670,28 @@ python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
 
 ### 对个人
 
-- **知识不再流失**：每次解决问题后写一行提交，AI 帮你整理成文章，几个月后翻飞书就能找到思路
-- **周报自动生成**：平时正常提交，周五把本周 commit 汇总一下，周报就写完了
-- **AI 上下文延续**：把历史对话总结提交到仓库，下次开新对话把文件贴给 AI，不需要重新介绍项目背景
+- **知识不再流失**：每次解决问题后花 10 分钟写踩坑记录推飞书，几个月后搜索就能找回思路
+- **周报自动生成**：平时正常写日志，周五把本周日志汇总一下，周报就写完了
+- **AI 上下文延续**：把历史对话总结推飞书，下次开新对话把文件贴给 AI，不需要重新介绍项目背景
 
 ### 对知识管理
 
-- **飞书全文检索**：所有文档在飞书里，搜索「OpenCV 链接错误」秒出历史解决方案，比翻聊天记录快 10 倍
+- **飞书全文检索**：所有文档在飞书里，搜索「ConnectionResetError」秒出历史解决方案，比翻聊天记录快 10 倍
 - **结构化沉淀**：`notes/` 自动变成知识库，`weekly/` 自动变成周报存档，不需要额外维护
 - **跨项目复用**：A 项目踩过的坑，B 项目的人在飞书里搜一下就能找到，知识在团队内流动
+
+---
+
+## 更新日志
+
+| 版本 | 日期 | 变更内容 |
+| --- | --- | --- |
+| v1.3 | 2026-04-23 | `feishu_writer._call()` 加指数退避重试（最多4次），解决大文档推送时网络抖动中断问题 |
+| v1.3 | 2026-04-23 | Actions 和 post-commit 钩子新增监控 `daily_log/` `weekly/` `notes/` `ai_context/` 目录 |
+| v1.3 | 2026-04-23 | 文档重构：两类使用模式分类，新增个人三大场景详细示例 |
+| v1.2 | 2026-04-20 | 加入知识库级别授权说明，完善常见问题速查 |
+| v1.1 | 2026-04-18 | 修复 Actions 正则匹配 README.md，升级 pip cache |
+| v1.0 | 2026-04-15 | 初始版本：Markdown → 飞书、本地钩子、GitHub Actions、AI 摘要 |
 
 ---
 
@@ -728,6 +703,8 @@ python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
 - [x] AI 变更摘要（OpenAI，无 Key 时降级为 commit message）
 - [x] 创建新飞书子页面工具（create_wiki_page.py）
 - [x] 一个项目一个仓库一个飞书页面的标准化模式
+- [x] 网络抖动自动重试（指数退避，最多4次）
+- [x] 个人三大场景（日志/踩坑/AI上下文）目录监控
 - [ ] 每章/每文件独立 Wiki 子页面（实现文件级覆盖）
 - [ ] GitHub Issue ↔ 飞书 Bitable 双向同步
 - [ ] 每日站会摘要定时发送到飞书群
