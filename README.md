@@ -386,11 +386,11 @@ git push
 ### 快速命令
 
 ```powershell
-# 推单个文件到飞书
+# 推单个文件到飞书（追加）
 python feishu/feishu_writer.py daily_log/2026-04-23.md
 
-# 清空飞书文档后全量重写
-python feishu/feishu_writer.py notes/2026-04-23_xxx.md --clear
+# 清空飞书文档后全量重写（适合只有一份文档的页面）
+python feishu/feishu_writer.py daily_log/2026-04-23.md --clear
 
 # 只验证解析，不实际推送
 python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
@@ -400,6 +400,78 @@ python feishu/feishu_writer.py weekly/2026-W17.md --dry-run
 > - 临时记录，不想污染 Git 历史
 > - 个人日志、踩坑笔记、AI 上下文——这类内容只需要飞书可检索，不需要版本对比
 > - 批量把旧文档迁移到飞书
+
+---
+
+### 实测记录：三个场景完整验证（2026-04-23）
+
+> 测试飞书页面：`https://ncnte6r0dba2.feishu.cn/wiki/PEFdwsBodig1Fzkf8IpcRD9vnQc`
+>
+> 该页面为新建空白页，已给飞书应用授权「可编辑」。
+> 以下三个场景依次追加写入同一页面，验证「只推飞书」模式全部通过。
+
+**① 场景二：每日开发日志**
+
+```powershell
+# 新建日志文件（内容见 daily_log/2026-04-23.md）
+# 首次推送用 --clear 清空页面，之后追加
+$env:FEISHU_WIKI_TOKEN="PEFdwsBodig1Fzkf8IpcRD9vnQc"
+python feishu/feishu_writer.py daily_log/2026-04-23.md --clear
+```
+
+实际输出：
+```
+[parse] 解析出 17 个单元（块/标题/列表等 17，表格 0）
+[auth] 获取 tenant_access_token ... ok
+[wiki] node=PEFdwsBodig1Fzkf8IpcRD9vnQc -> document_id=UE0kdRg6FohQM8xKWzxciYovnFd
+[write] 追加 17 个单元 ...
+[done] 完成，去飞书刷新文档看看吧。
+耗时：约 5 秒
+```
+
+**② 场景三：踩坑记录**
+
+```powershell
+# 追加踩坑笔记（不加 --clear，保留上面的日志内容）
+python feishu/feishu_writer.py notes/2026-04-23_feishu-batch-delete-limit.md
+```
+
+实际输出：
+```
+[parse] 解析出 27 个单元（块/标题/列表等 27，表格 0）
+[auth] 获取 tenant_access_token ... ok
+[wiki] node=PEFdwsBodig1Fzkf8IpcRD9vnQc -> document_id=UE0kdRg6FohQM8xKWzxciYovnFd
+[write] 追加 27 个单元 ...
+[done] 完成，去飞书刷新文档看看吧。
+耗时：约 6 秒
+```
+
+**③ 场景四：AI 上下文记录**
+
+```powershell
+# 继续追加 AI 上下文
+python feishu/feishu_writer.py ai_context/2026-04-23.md
+```
+
+实际输出：
+```
+[parse] 解析出 31 个单元（块/标题/列表等 31，表格 0）
+[auth] 获取 tenant_access_token ... ok
+[wiki] node=PEFdwsBodig1Fzkf8IpcRD9vnQc -> document_id=UE0kdRg6FohQM8xKWzxciYovnFd
+[write] 追加 31 个单元 ...
+[done] 完成，去飞书刷新文档看看吧。
+耗时：约 6 秒
+```
+
+**验证结论**：
+
+| 场景 | 文件 | 块数 | 耗时 | 结果 |
+| --- | --- | --- | --- | --- |
+| 每日日志 | `daily_log/2026-04-23.md` | 17 | ~5s | ✅ |
+| 踩坑记录 | `notes/2026-04-23_feishu-batch-delete-limit.md` | 27 | ~6s | ✅ |
+| AI 上下文 | `ai_context/2026-04-23.md` | 31 | ~6s | ✅ |
+
+三个场景均无需 `git add / git commit / git push`，直接运行 `python feishu/feishu_writer.py 文件.md` 即可写入飞书。
 
 ---
 
