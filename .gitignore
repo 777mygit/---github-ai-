@@ -1,5 +1,7 @@
-# 敏感凭证
+# 敏感凭证（绝对不提交）
 feishu/.env
+.env
+*.env
 
 # Python 构建产物
 __pycache__/

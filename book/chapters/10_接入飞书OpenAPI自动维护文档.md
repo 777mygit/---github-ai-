@@ -30,7 +30,7 @@
 ```
 飞书开放平台 https://open.feishu.cn/app
   └─ 创建「企业自建应用」
-       ├─ App ID：cli_a9636f488a789cd4       （公开标识符）
+       ├─ App ID：cli_xxxxxxxxxxxxxxxxxxxx    （公开标识符）
        └─ App Secret：W5hGOiHA7Lch9l...     （私密，绝不放代码里）
 ```
 
@@ -704,7 +704,7 @@ def main():
 在 [飞书开放平台](https://open.feishu.cn/app) 点「创建企业自建应用」，任意命名，进入应用后在「凭证与基础信息」取到：
 
 ```
-App ID:     cli_a9636f488a789cd4
+App ID:     cli_xxxxxxxxxxxxxxxxxxxx
 App Secret: W5hGOiHA7Lch9l...   ← 保密，只写在 .env 里
 ```
 
@@ -733,7 +733,7 @@ copy .env.example .env
 `.env` 内容（不要提交到 Git）：
 
 ```
-FEISHU_APP_ID=cli_a9636f488a789cd4
+FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxxxxxx
 FEISHU_APP_SECRET=W5hGOiHA7Lch...
 FEISHU_WIKI_TOKEN=MLwKwZkgPiqgALkWVTEcI0Gjnmf
 FEISHU_OPEN_DOMAIN=https://open.feishu.cn

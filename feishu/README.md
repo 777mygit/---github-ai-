@@ -20,7 +20,7 @@
 OpenAPI 使用 `tenant_access_token` 调用时，应用必须对该文档有权限。两种做法任选：
 
 - **推荐**：打开目标文档（你的链接
-  <https://ncnte6r0dba2.feishu.cn/wiki/MLwKwZkgPiqgALkWVTEcI0Gjnmf>），右上角「共享」→ 把你的自建应用添加为**可编辑**协作者。
+  <https://your-tenant.feishu.cn/wiki/YourWikiTokenHere>），右上角「共享」→ 把你的自建应用添加为**可编辑**协作者。
 - 或：在 Wiki 的知识库「设置 → 管理应用」里把该应用加到知识库。
 
 > 如果报 `permission denied` 之类错误，99% 都是这一步没做或权限不够。
@@ -36,7 +36,7 @@ notepad .env        # 填 App ID / App Secret，WIKI_TOKEN 默认已填好
 
 `FEISHU_WIKI_TOKEN` 就是 URL 最后一段：
 ```
-https://ncnte6r0dba2.feishu.cn/wiki/MLwKwZkgPiqgALkWVTEcI0Gjnmf
+https://your-tenant.feishu.cn/wiki/YourWikiTokenHere
                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 

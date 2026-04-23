@@ -87,9 +87,9 @@
 | GitHub 邮箱 | 注册时填的邮箱 | `25s001027@stu.hit.edu.cn` |
 | GitHub 仓库 HTTPS 地址 | 仓库页面绿色 Code 按钮 | `https://github.com/777mygit/qt-camera.git` |
 | GitHub Personal Access Token | Settings → Developer settings → Tokens | `ghp_xxxxxxxxxxxxxxxx` |
-| 飞书 App ID | 飞书开放平台 → 我的应用 | `cli_a9636f488a789cd4` |
-| 飞书 App Secret | 同上 | `W5hGOiHA7Lch9laV1RnV1mGROmSm2hDH` |
-| 飞书新页面 Wiki Token | 新建飞书页面后从 URL 复制 | `VbQHwpK5bizjRtk6SpEccKwPnMd` |
+| 飞书 App ID | 飞书开放平台 → 我的应用 | `cli_xxxxxxxxxxxxxxxxxxxx` |
+| 飞书 App Secret | 同上（**不要提交到 Git！**） | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
+| 飞书新页面 Wiki Token | 新建飞书页面后从 URL 复制 | `AbCdEfGhIjKlMnOpQrSt`（每个项目不同） |
 
 ---
 
@@ -174,8 +174,8 @@ copy feishu\.env.example feishu\.env
 编辑 `feishu\.env`，填入项目对应的值：
 
 ```env
-FEISHU_APP_ID=cli_a9636f488a789cd4
-FEISHU_APP_SECRET=W5hGOiHA7Lch9laV1RnV1mGROmSm2hDH
+FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # ← 绝对不要提交这个文件！
 FEISHU_WIKI_TOKEN=AbCdEfGhIjKlMnOpQrSt   ← 刚才复制的新页面 token
 FEISHU_OPEN_DOMAIN=https://open.feishu.cn
 ```
@@ -202,8 +202,8 @@ python feishu/feishu_writer.py Z:\qt_demo\EmbeddedQtTutorial\05_opencv_camera\RE
 
 | Secret 名称 | 值 |
 | --- | --- |
-| `FEISHU_APP_ID` | `cli_a9636f488a789cd4` |
-| `FEISHU_APP_SECRET` | `W5hGOiHA7Lch9laV1RnV1mGROmSm2hDH` |
+| `FEISHU_APP_ID` | `cli_xxxxxxxxxxxxxxxxxxxx` |
+| `FEISHU_APP_SECRET` | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
 | `FEISHU_WIKI_TOKEN` | `AbCdEfGhIjKlMnOpQrSt` |
 | `OPENAI_API_KEY` | `sk-xxx`（可选，用于 AI 摘要） |
 
