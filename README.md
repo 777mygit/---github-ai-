@@ -686,7 +686,8 @@ python feishu/feishu_writer.py ai_context/2026-04-23.md
 
 | 版本 | 日期 | 变更内容 |
 | --- | --- | --- |
-| v1.3 | 2026-04-23 | `feishu_writer._call()` 加指数退避重试（最多4次），解决大文档推送时网络抖动中断问题 |
+| v1.4 | 2026-04-23 | `feishu_writer --clear` 改为循环分批删除（每次 50 个），解决飞书 `batch_delete` 单次上限导致大文档清空不彻底、内容重复的问题 |
+| v1.3 | 2026-04-23 | `feishu_writer._call()` 加指数退避重试（最多 4 次），解决大文档推送时网络抖动中断问题 |
 | v1.3 | 2026-04-23 | Actions 和 post-commit 钩子新增监控 `daily_log/` `weekly/` `notes/` `ai_context/` 目录 |
 | v1.3 | 2026-04-23 | 文档重构：两类使用模式分类，新增个人三大场景详细示例 |
 | v1.2 | 2026-04-20 | 加入知识库级别授权说明，完善常见问题速查 |
@@ -703,8 +704,9 @@ python feishu/feishu_writer.py ai_context/2026-04-23.md
 - [x] AI 变更摘要（OpenAI，无 Key 时降级为 commit message）
 - [x] 创建新飞书子页面工具（create_wiki_page.py）
 - [x] 一个项目一个仓库一个飞书页面的标准化模式
-- [x] 网络抖动自动重试（指数退避，最多4次）
+- [x] 网络抖动自动重试（指数退避，最多 4 次）
 - [x] 个人三大场景（日志/踩坑/AI上下文）目录监控
+- [x] `--clear` 分批删除，彻底清空不留残块
 - [ ] 每章/每文件独立 Wiki 子页面（实现文件级覆盖）
 - [ ] GitHub Issue ↔ 飞书 Bitable 双向同步
 - [ ] 每日站会摘要定时发送到飞书群
