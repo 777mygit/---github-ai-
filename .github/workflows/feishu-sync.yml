@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install requests python-dotenv
@@ -55,7 +56,8 @@ jobs:
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_WIKI_TOKEN: ${{ secrets.FEISHU_WIKI_TOKEN }}
         run: |
-          CHANGED=$(git diff HEAD~1 --name-only | grep -E "^(book/chapters/|README).*\.md$" || true)
+          # 匹配 book/chapters/ 下的 .md 和根目录 README.md
+          CHANGED=$(git diff HEAD~1 --name-only | grep -E "^(book/chapters/.+\.md|README\.md)$" || true)
           if [ -z "$CHANGED" ]; then
             echo "本次 push 无 .md 变更，跳过"
             exit 0
