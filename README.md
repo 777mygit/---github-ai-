@@ -73,7 +73,8 @@ your-next-project     ──►  飞书「你的下一个项目」页面
 │   ├── ai_summarize.py       # AI 摘要：git diff → GPT → 飞书变更日志
 │   ├── create_wiki_page.py   # 工具：自动在飞书创建新子页面
 │   ├── .env.example          # 环境变量模板（复制为 .env 填写真实值）
-│   └── requirements.txt      # Python 依赖
+│   ├── requirements.txt      # Python 依赖
+│   └── 项目底层原理与全流程说明.md  # 实现细节、Mermaid 流程图、问题与解（给 Python 基础薄弱的读者）
 ├── .github/
 │   └── workflows/
 │       └── feishu-sync.yml   # GitHub Actions：push 时自动同步飞书
